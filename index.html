@@ -65,7 +65,8 @@
   .note p{margin:0;font-size:13px;line-height:1.7;color:#a8a29e}
   .note.warn{border-top-color:#fecdd3}
   .note.warn p{color:var(--red)}
-  .credit{margin:10px 0 0;font-size:12px;color:#a8a29e;text-align:center}
+  .credit{margin:4px 0 0;font-size:12px;color:#a8a29e;text-align:center}
+  .hits{margin:10px 0 0;font-size:12px;color:#a8a29e;text-align:center}
   :focus-visible{outline:2px solid var(--green);outline-offset:2px}
 </style>
 </head>
@@ -107,6 +108,7 @@
   </div>
 
   <div class="note hidden" id="note"></div>
+  <p class="hits hidden" id="hits"></p>
   <p class="credit">© 2026 rubytsaitw</p>
 </div>
 
@@ -164,6 +166,7 @@ const T={
       empty:'還沒選日期。點下方日曆選一天，可以複選。',clear:'全部清空',add:'加入',
       hint:'沒有選時段的日期，只會輸出日期。',
       note:'星期幾：由程式即時計算',
+      hits:function(n){return '累計 '+n+' 位訪客';},
       broken:'日期計算異常，請重新整理頁面。'},
   en:{sub:'Sorting out meeting times by text is a pain, right?\nNow it takes a few taps: pick a date, pick a slot, text copied, paste into LINE or email.',
       opening:'Opening line',custom:'Custom…',customTime:'+ Custom time…',addTime:'Add a time slot',
@@ -171,6 +174,7 @@ const T={
       empty:'No dates yet. Tap the calendar below; you can pick several.',clear:'Clear all',add:'Add',
       hint:'A date with no slot prints as a date only.',
       note:'Weekday: calculated automatically',
+      hits:function(n){return n+' visitors';},
       broken:'Something went wrong with the date calculation. Please refresh the page.'}
 };
 
@@ -183,6 +187,7 @@ let slots=[];               // {y,m,d,times:[{zh,en}]}
 let openIdx=0;
 let openCustom='';
 let test=null;
+let hits=null;
 
 const $=function(id){return document.getElementById(id);};
 const keyOf=function(s){return s.y+'-'+s.m+'-'+s.d;};
@@ -336,6 +341,12 @@ function renderSlots(){
     host.appendChild(card);
   });
 }
+function renderCredit(){
+  const h=$('hits');
+  if(hits===null){ h.className='hits hidden'; return; }
+  h.className='hits';
+  h.textContent=T[lang].hits(hits);
+}
 function renderNote(){
   const n=$('note');
   if(!test || test.checked===0){ n.className='note hidden'; return; }
@@ -343,7 +354,7 @@ function renderNote(){
   n.innerHTML='<p></p>';
   n.querySelector('p').textContent = test.ok ? T[lang].note : T[lang].broken;
 }
-function render(){ renderOutput(); renderOpening(); renderCalendar(); renderSlots(); renderNote(); }
+function render(){ renderOutput(); renderOpening(); renderCalendar(); renderSlots(); renderNote(); renderCredit(); }
 
 /* ===================== 動作 ===================== */
 function toggleDay(d){
@@ -378,6 +389,27 @@ $('clear').onclick=function(){ slots=[]; render(); };
 $('prev').onclick=function(){ view.m--; if(view.m<1){view.m=12;view.y--;} renderCalendar(); };
 $('next').onclick=function(){ view.m++; if(view.m>12){view.m=1;view.y++;} renderCalendar(); };
 
+/* ===================== 瀏覽統計（GoatCounter）=====================
+   1. 到 https://www.goatcounter.com/signup 註冊，取得自己的代號
+   2. 把下面的空字串換成代號，例如 'meeting-time'
+   3. 到 GoatCounter 的 Settings 勾選
+      "Allow adding visitor counts on your website"，數字才會顯示在頁面上
+   留空的話就完全不會載入任何統計程式碼。                                */
+var GOATCOUNTER_CODE = 'meeting-time-helper';
+
+if(GOATCOUNTER_CODE){
+  const gc=document.createElement('script');
+  gc.async=true; gc.src='//gc.zgo.at/count.js';
+  gc.setAttribute('data-goatcounter','https://'+GOATCOUNTER_CODE+'.goatcounter.com/count');
+  document.body.appendChild(gc);
+
+  const path=location.pathname||'/';
+  fetch('https://'+GOATCOUNTER_CODE+'.goatcounter.com/counter/'+path+'.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d&&d.count){ hits=d.count; renderCredit(); } })
+    .catch(function(){});   // 抓不到就安靜地不顯示，不影響其他功能
+}
+
 /* ===================== 啟動 ===================== */
 $('sub').textContent=T[lang].sub;
 test={checked:0,ok:true};
@@ -389,8 +421,5 @@ setTimeout(function(){   // 自我驗證在首次繪製之後跑，不擋畫面�
   render();
 },0);
 </script>
-<!-- 瀏覽統計 -->
-     <script data-goatcounter="https://meeting-time-helper.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
