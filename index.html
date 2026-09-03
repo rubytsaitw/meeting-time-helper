@@ -403,11 +403,25 @@ if(GOATCOUNTER_CODE){
   gc.setAttribute('data-goatcounter','https://'+GOATCOUNTER_CODE+'.goatcounter.com/count');
   document.body.appendChild(gc);
 
-  const path=location.pathname||'/';
-  fetch('https://'+GOATCOUNTER_CODE+'.goatcounter.com/counter/'+path+'.json')
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(d){ if(d&&d.count){ hits=d.count; renderCredit(); } })
-    .catch(function(){});   // 抓不到就安靜地不顯示，不影響其他功能
+  // 用特殊路徑 TOTAL 取整站總人數，避免 /index.html 與 / 路徑對不上
+  fetch('https://'+GOATCOUNTER_CODE+'.goatcounter.com/counter/TOTAL.json')
+    .then(function(r){
+      if(!r.ok){
+        console.warn('[goatcounter] 計數器回應 '+r.status+
+          (r.status===403 ? '：請到 Settings 勾選 Allow adding visitor counts on your website'
+                          : r.status===404 ? '：這個站台代號查不到資料' : ''));
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(d){
+      if(d && d.count){ hits=d.count; renderCredit(); console.log('[goatcounter] 總訪客數 '+d.count+'（結果最多快取 4 小時）'); }
+    })
+    .catch(function(e){ console.warn('[goatcounter] 抓不到計數。若這裡是本機或預覽環境屬正常（外部連線被擋），線上版出現才需檢查廣告攔截器', e); });
+
+  setTimeout(function(){
+    if(!window.goatcounter) console.warn('[goatcounter] count.js 沒載入成功。本機或預覽環境屬正常；線上版出現多半是廣告攔截器');
+  }, 4000);
 }
 
 /* ===================== 啟動 ===================== */
